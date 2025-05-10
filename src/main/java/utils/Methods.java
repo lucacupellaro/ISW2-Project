@@ -26,6 +26,12 @@ public class Methods {
         this.AVG_LOC_added = AVG_LOC_added;
     }
 
+    // Costruttore iniziale
+    public Methods(String name, int LOC) {
+        this.name = name;
+        this.LOC = LOC;
+    }
+
     // Getter e setter
 
     public String getName() {

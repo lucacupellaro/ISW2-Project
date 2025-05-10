@@ -17,17 +17,20 @@ public class Main {
         String path="/home/luca/ISW2/zookeeper";
 
         CsvUtils csvUtils = new CsvUtils();
+
         csvUtils.createCsv("src/main/resources/metrica.csv");
         
         Date data = new SimpleDateFormat("yyyy MM dd").parse("2020 12 10");
 
-        DownlaodDatas datas= new DownlaodDatas();
 
+        //jira
         JiraIssueFetcher fetcher = new JiraIssueFetcher();
         List<JiraIssue> issues = fetcher.fetchIssues();
         fetcher.printIssues(issues);
 
 
+        //jGit
+        DownlaodDatas datas= new DownlaodDatas();
         //datas.initialized();
         datas.getVersioni(path, data);
     }
