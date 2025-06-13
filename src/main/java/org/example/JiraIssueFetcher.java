@@ -16,7 +16,7 @@ public class JiraIssueFetcher {
     private static final String API_URL =
             "https://issues.apache.org/jira/rest/api/2/search?jql=project=ZOOKEEPER&maxResults=50&fields=key,summary,reporter,status,created,fixVersions";
 
-    /**
+    /** co
      * Recupera una lista di issue da Jira in modalità anonima.
      * @return lista di JiraIssue
      * @throws Exception in caso di errore HTTP o parsing

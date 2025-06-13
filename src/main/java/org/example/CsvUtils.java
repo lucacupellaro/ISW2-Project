@@ -1,5 +1,9 @@
 package org.example;
 
+import utils.Files;
+import utils.Methods;
+import utils.Versione;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -55,4 +59,36 @@ public class CsvUtils {
             writer.write(headerLine + "\n");
         }
     }
+
+    public void writeData(int versione, String file, String metodo, int loc) {
+        String path = "src/main/resources/metrica.csv";
+        boolean fileExists = new File(path).exists();
+
+        try (FileWriter writer = new FileWriter(path, true)) {
+            if (!fileExists) {
+                writer.write("Version,FileName,MethodName,LOC\n");
+            }
+            String ver= String.valueOf(versione);
+            // Escape CSV dei singoli campi
+            String versionEscaped = escapeCsv(ver);
+            String fileEscaped = escapeCsv(file);
+            String metodoEscaped = escapeCsv(metodo);
+
+            // Scrittura riga CSV
+            writer.write(versionEscaped + "," + fileEscaped + "," + metodoEscaped + "," + loc + "\n");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Metodo di escape per i campi CSV
+    private String escapeCsv(String field) {
+        if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+            field = field.replace("\"", "\"\"");
+            return "\"" + field + "\"";
+        }
+        return field;
+    }
+
 }

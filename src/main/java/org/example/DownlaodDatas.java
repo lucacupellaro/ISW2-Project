@@ -1,27 +1,38 @@
 package org.example;
+import com.github.javaparser.ParseResult;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.BufferedReader;
 import java.io.File;
 
-import org.eclipse.jgit.errors.AmbiguousObjectException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.TagOpt;
 import utils.Files;
+import utils.JiraIssue;
 import utils.Methods;
 import utils.Versione;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
-import java.util.Date;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class DownlaodDatas {
 
@@ -30,9 +41,10 @@ public class DownlaodDatas {
     public void initialized() throws IOException {
         try {
             Git git = Git.cloneRepository()
-                    .setURI("https://github.com/lucacupellaro/zookeeper")
-                    .setDirectory(new File("/home/luca/ISW2/zookeeper"))
+                    .setURI("https://github.com/apache/bookkeeper.git")
+                    .setDirectory(new File("/home/luca/ISW2/bookkeeper"))
                     .setCloneAllBranches(true)
+                    .setTagOption(TagOpt.FETCH_TAGS)
                     .call();
         } catch (GitAPIException ex) {
             throw new RuntimeException(ex);
@@ -40,16 +52,17 @@ public class DownlaodDatas {
 
 
         Repository repository = new FileRepositoryBuilder()
-                .setGitDir(new File("/home/luca/ISW2/zookeeper"))
+                .setGitDir(new File("/home/luca/ISW2/bookkeeper"))
                 .build();
         Git git = new Git(repository);
 
     }
 
-    public void getVersioni(String percorsoRepo, Date dataLimite) {
-        // Inizializza il repository
+
+    public List<Versione> getVersioni2(String percorsoRepo) {
         FileRepositoryBuilder builder = new FileRepositoryBuilder();
-        List<Files> listaFileVersione = new ArrayList<>();
+        List<Versione> Versioni;
+
         try (Repository repository = builder
                 .setGitDir(new File(percorsoRepo, ".git"))
                 .readEnvironment()
@@ -57,57 +70,118 @@ public class DownlaodDatas {
                 .build();
              Git git = new Git(repository)) {
 
-            // RevWalk consente di scorrere i commit in ordine cronologico
-            RevWalk revWalk = new RevWalk(repository);
-            ObjectId head = repository.resolve("HEAD"); // Ultimo commit disponibile
-            // Convertiamo l’ObjectId del commit in RevCommit
-            RevCommit headCommit = revWalk.parseCommit(head);
+            // HashMap per contenere il mapping (tag -> data)
+            Map<Ref, Date> tagDateMap = new HashMap<>();
 
-            // Iniziamo a percorrere i commit a partire dal più recente (HEAD)
-            revWalk.markStart(headCommit);
-            System.out.println("Data inserita"+dataLimite);
-
-            int version_=0;
-            for (RevCommit commit : revWalk) {
-
-
-                // Data del commit (in secondi, convertita in millisecondi)
-                Date commitDate = new Date(commit.getCommitTime() * 1000L);
-
-                // Verifica se la data del commit è precedente (o uguale) alla dataLimite
-                if (commitDate.after(dataLimite)) {
-                    // Qui aggiungi la logica di “scaricamento/estrazione”
-                    // ad esempio fare un checkout o archiviare la directory, ecc.
-                    System.out.println("Trovato commit valido: " + commit.getId().getName()
-                            + " - Data: " + commitDate);
-
-                    // Se devi scaricare/estrarre la versione corrispondente:
-                    // git.checkout().setName(commit.getName()).call();
-                    // ...esegui operazioni necessarie... String.valueOf(commit.getId())
-                    //System.out.println("Questo è il commit: "+);
-                    listaFileVersione=getFilesFromVersion(percorsoRepo, commit.getId().getName());
-
-                    Versione version = new Versione(String.valueOf(commit.getId()),listaFileVersione);
-                }
-
-                version_++;
-
-                System.out.println("Versione: "+version_);
+            for (Ref tagRef : git.tagList().call()) {
+                RevWalk revWalk = new RevWalk(repository);
+                RevCommit commit = revWalk.parseCommit(tagRef.getObjectId());
+                Date commitDate = commit.getAuthorIdent().getWhen();
+                tagDateMap.put(tagRef, commitDate);
+                revWalk.dispose();
             }
 
-            revWalk.dispose();
-        } catch (AmbiguousObjectException e) {
-            throw new RuntimeException(e);
-        } catch (IncorrectObjectTypeException e) {
-            throw new RuntimeException(e);
-        } catch (MissingObjectException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (GitAPIException e) {
-            throw new RuntimeException(e);
+            // Ordina la entrySet per data
+            List<Map.Entry<Ref, Date>> sortedEntries = new ArrayList<>(tagDateMap.entrySet());
+            sortedEntries.sort(Map.Entry.comparingByValue());
+
+
+            // Calcola il 33%
+            int cutoff = (int) Math.ceil(sortedEntries.size() * 0.33);
+            List<Map.Entry<Ref, Date>> selectedTags = sortedEntries.subList(0, cutoff);
+
+            int i=0;
+            //selectedTags al posto di sortedEntries
+            for (Map.Entry<Ref, Date> entry : sortedEntries) {
+
+                Ref tagRef = entry.getKey();
+                String fullTagName = tagRef.getName();  // es: refs/tags/release-1.0.0
+                String cleanedTag = fullTagName.replace("refs/tags/", "");
+                //System.out.println("Processing release: " + cleanedTag + " - Date: " + entry.getValue()+ i);
+
+                git.checkout().setName(cleanedTag).call();
+                //List<Files> listaFileVersione = getFilesFromVersion(percorsoRepo, cleanedTag);
+                Versione version = new Versione(cleanedTag,i);
+                i++;
+                versioni.add(version);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        return versioni;
     }
+
+
+
+
+    public void getVersioni(String percorsoRepo, Date dataLimite, List<JiraIssue> issues) {
+        List<Versione> versioni = new ArrayList<>();
+        Set<String> issueKeys = issues.stream()
+                .map(JiraIssue::returnKey)
+                .collect(Collectors.toSet());
+
+        FileRepositoryBuilder builder = new FileRepositoryBuilder();
+
+        try (Repository repository = builder
+                .setGitDir(new File(percorsoRepo, ".git"))
+                .readEnvironment()
+                .findGitDir()
+                .build();
+             Git git = new Git(repository)) {
+
+            RevWalk revWalk = new RevWalk(repository);
+            ObjectId head = repository.resolve("HEAD");
+            RevCommit headCommit = revWalk.parseCommit(head);
+            revWalk.markStart(headCommit);
+
+            // Regex per tutte le chiavi Jira
+            Pattern keyPattern = Pattern.compile(
+                    "\\b(" + String.join("|", issueKeys) + ")\\b"
+            );
+
+            for (RevCommit commit : revWalk) {
+                String commitMessage = commit.getFullMessage();
+                Matcher matcher = keyPattern.matcher(commitMessage);
+                System.out.println("match find: " +matcher.find());
+                // 1. Controllo chiave Jira nel messaggio
+                if (matcher.find()) {
+                    Date commitDate = new Date(commit.getCommitTime() * 1000L);
+                    System.out.println("Ciao");
+                    // 2. Controllo data commit
+                    if (commitDate.after(dataLimite)) {
+                        System.out.println("Commit valido: " + commit.getId().getName()
+                                + " - Data: " + commitDate
+                                + " - Issue: " + matcher.group(1));
+
+                        // 3. Recupero file modificati
+                        List<Files> files = getFilesFromVersion(
+                                percorsoRepo,
+                                commit.getId().getName()
+                        );
+
+                        // 4. Creazione oggetto Versione
+                       /* versioni.add(new Versione(
+                                commit.getId().getName(),
+                                files,
+                                commit.getAuthorIdent().getName(),
+                                commitDate,
+                                matcher.group(1)  // Chiave Jira
+                        ));
+
+                        */
+                    }
+                }
+            }
+            revWalk.dispose();
+        } catch (Exception e) {
+            throw new RuntimeException("Errore nell'analisi del repository", e);
+        }
+       // return versioni;
+    }
+
+
 
 
     public List<Files> getFilesFromVersion(String percorsoRepo, String versionId) throws IOException, GitAPIException {
@@ -121,26 +195,21 @@ public class DownlaodDatas {
                 .build();
              Git git = new Git(repository)) {
 
-            // Invece di ...
-            //git.checkout().setName(versionId).call();
-
-            // ... usa ...
             git.checkout().setName(versionId).call();
 
-            // Recupera la lista di file dall'intero repository
+
             File rootDir = new File(percorsoRepo);
             for (File fsFile : listAllFiles(rootDir)) {
                 if (fsFile.isFile()) {
-                    // Qui puoi calcolare LOC o altre metriche secondo le tue necessità
+
                     Files fileVersione = new Files(fsFile.getName());
 
-                    // Aggiunge il file alla lista
-                    listaFileVersiones.add(fileVersione);
+                    if(fsFile.getName().endsWith(".java")) {
+                        listaFileVersiones.add(fileVersione);
+                       // System.out.println("File trovato: " + fsFile.getAbsolutePath());
+                       // fileVersione.setMethods(extractMethodsFromFile(fsFile.getAbsolutePath()));
+                    }
 
-                    // Stampa il percorso del file
-                    System.out.println("File trovato: " + fsFile.getAbsolutePath());
-
-                    fileVersione.setMethods(getMethodsFromFile(fsFile.getAbsolutePath()));
                 }
             }
         }
@@ -167,50 +236,62 @@ public class DownlaodDatas {
     }
 
 
-    /*
+    public List<Methods> extractMethodsFromFile(String filePath) {
+        List<Methods> methodsList = new ArrayList<>();
+        try {
+            JavaParser parser = new JavaParser();
+            ParseResult<CompilationUnit> result = parser.parse(new File(filePath));
 
-    public List<Methods> getMethodsFromFile(File file) {
-        List<Methods> methods = new ArrayList<>();
+            if (result.isSuccessful() && result.getResult().isPresent()) {
+                CompilationUnit cu = result.getResult().get();
 
+                List<MethodDeclaration> methods = cu.findAll(MethodDeclaration.class);
 
-        // 1. Lettura del contenuto del file (già passato come parametro).
-        List<String> lines = new ArrayList<>();
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                lines.add(line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return methods;
-        }
+                for (MethodDeclaration method : methods) {
+                    String methodName = method.getNameAsString();
+                    //int numParams = method.getParameters().size();
 
-        // 2. Esempio di riconoscimento semplice di un metodo in Java:
-        //    cerchiamo righe che inizino con un modificatore e contengano parentesi tonde + parentesi graffa.
-        for (String line : lines) {
-            String trimmedLine = line.trim();
-            // Controlliamo se la riga inizia con un modificatore classico (public, private, protected, static).
-            if (trimmedLine.startsWith("public ")
-                    || trimmedLine.startsWith("private ")
-                    || trimmedLine.startsWith("protected ")
-                    || trimmedLine.startsWith("static ")) {
+                    int startLine = method.getBegin().get().line;
+                    int endLine = method.getEnd().get().line;
+                    int loc = endLine - startLine + 1;
 
-                // Se contiene "(", ")" e "{" potrebbe essere (molto rudimentalmente) la definizione di un metodo.
-                if (trimmedLine.contains("(") && trimmedLine.contains(")") && trimmedLine.contains("{")) {
-                    // Ricaviamo la firma fino alla parentesi aperta.
-                    int indexParenthesis = trimmedLine.indexOf("(");
-                    String signature = trimmedLine.substring(0, indexParenthesis).trim();
+                    //int numIf = method.findAll(IfStmt.class).size();
+                    //int numFor = method.findAll(ForStmt.class).size();
+                    //int numWhile = method.findAll(WhileStmt.class).size();
+                    //int numSwitch = method.findAll(SwitchStmt.class).size();
+                    //int ciclomatica = 1 + numIf + numFor + numWhile + numSwitch;
 
-                    // Crea un nuovo oggetto Methods con la stringa della firma (o ciò che serve).
-                    Methods method = new Methods(signature);
-                    methods.add(method);
+                    /*
+                     Methods m = new Methods(methodName, loc);
+                    m.setLOC(loc);
+                    m.setNumParameters(numParams);
+                    m.setNumIf(numIf);
+                    m.setNumFor(numFor);
+                    m.setNumWhile(numWhile);
+                    m.setCyclomatic(ciclomatica);
+
+                    methodsList.add(m);
+                     */
+                    // DEBUG
+                    //System.out.println("Metodo: " + methodName + " LOC: " + loc );
+
+                    Methods m = new Methods(methodName, loc);
+                    m.setLOC(loc);
+                    methodsList.add(m);
+
                 }
+            } else {
+                System.out.println("Parsing fallito su file: " + filePath);
             }
-        }
 
-        return methods;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return methodsList;
     }
-    */
+
+
+
 
 
     public List<Methods> getMethodsFromFile(String file) {
