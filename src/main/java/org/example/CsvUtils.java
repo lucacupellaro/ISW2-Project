@@ -35,23 +35,24 @@ public class CsvUtils {
                 "File Name",
                 "Method Name",
                 "LOC",
-                "LOC_touched",
-                "NR",
-                "NFix",
-                "NAuth",
-                "LOC_added",
-                "MAX_LOC_added",
-                "AVG_LOC_added",
+                "Statements Count",
+                "Cyclomatic Complexity",
+                "Nesting Depth",
+                "Number of Branches",
+                "Parameter Count",
+                "Return Statements",
+                "Method Invocations",
+                "Distinct Method Invocations",
+                "Local Variable Declarations",
+                "Has Javadoc",
+                "Method Histories",
+                "Authors",
+                "Stmt Added",
+                "Stmt Deleted",
                 "Churn",
-                "MAX_Churn",
-                "AVG_Churn",
-                "ChgSetSize",
-                "MAX_ChgSet",
-                "AVG_ChgSet",
-                "Age",
-                "WeightedAge",
                 "Buggy"
         );
+
 
         // Scrivi solo la riga di intestazione
         try (FileWriter writer = new FileWriter(file)) {
@@ -60,27 +61,199 @@ public class CsvUtils {
         }
     }
 
-    public void writeData(int versione, String file, String metodo, int loc) {
+    public void writeData2(
+            int versione, String file, String metodo, int loc, int statementsCount, int cyclomaticComplexity,
+            int nestingDepth, int numberOfBranches, int parameterCount, int returnStatements,
+            int methodInvocations, int distinctMethodInvocations, int localVariableDeclarations, boolean hasJavadoc) {
+
         String path = "src/main/resources/metrica.csv";
         boolean fileExists = new File(path).exists();
 
+        System.out.println(
+                "Versione: " + versione +
+                        " | File: " + file +
+                        " | Metodo: " + metodo +
+                        " | LOC: " + loc +
+                        " | StatementsCount: " + statementsCount +
+                        " | CyclomaticComplexity: " + cyclomaticComplexity +
+                        " | NestingDepth: " + nestingDepth +
+                        " | NumberOfBranches: " + numberOfBranches +
+                        " | ParameterCount: " + parameterCount +
+                        " | ReturnStatements: " + returnStatements +
+                        " | MethodInvocations: " + methodInvocations +
+                        " | DistinctMethodInvocations: " + distinctMethodInvocations +
+                        " | LocalVariableDeclarations: " + localVariableDeclarations +
+                        " | HasJavadoc: " + hasJavadoc
+        );
+
+
         try (FileWriter writer = new FileWriter(path, true)) {
             if (!fileExists) {
-                writer.write("Version,FileName,MethodName,LOC\n");
+                writer.write("Version,FileName,MethodName,LOC,StatementsCount,CyclomaticComplexity,NestingDepth,NumberOfBranches,ParameterCount,ReturnStatements,MethodInvocations,DistinctMethodInvocations,LocalVariableDeclarations,HasJavadoc\n");
             }
-            String ver= String.valueOf(versione);
-            // Escape CSV dei singoli campi
-            String versionEscaped = escapeCsv(ver);
+
+            String versionEscaped = escapeCsv(String.valueOf(versione));
             String fileEscaped = escapeCsv(file);
             String metodoEscaped = escapeCsv(metodo);
+            String locEscaped = String.valueOf(loc);
+            String statementsCountEscaped = String.valueOf(statementsCount);
+            String cyclomaticComplexityEscaped = String.valueOf(cyclomaticComplexity);
+            String nestingDepthEscaped = String.valueOf(nestingDepth);
+            String numberOfBranchesEscaped = String.valueOf(numberOfBranches);
+            String parameterCountEscaped = String.valueOf(parameterCount);
+            String returnStatementsEscaped = String.valueOf(returnStatements);
+            String methodInvocationsEscaped = String.valueOf(methodInvocations);
+            String distinctMethodInvocationsEscaped = String.valueOf(distinctMethodInvocations);
+            String localVariableDeclarationsEscaped = String.valueOf(localVariableDeclarations);
+            String hasJavadocEscaped = String.valueOf(hasJavadoc);
 
-            // Scrittura riga CSV
-            writer.write(versionEscaped + "," + fileEscaped + "," + metodoEscaped + "," + loc + "\n");
+            writer.write(
+                    versionEscaped + "," +
+                            fileEscaped + "," +
+                            metodoEscaped + "," +
+                            locEscaped + "," +
+                            statementsCountEscaped + "," +
+                            cyclomaticComplexityEscaped + "," +
+                            nestingDepthEscaped + "," +
+                            numberOfBranchesEscaped + "," +
+                            parameterCountEscaped + "," +
+                            returnStatementsEscaped + "," +
+                            methodInvocationsEscaped + "," +
+                            distinctMethodInvocationsEscaped + "," +
+                            localVariableDeclarationsEscaped + "," +
+                            hasJavadocEscaped + "\n"
+            );
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    public void writeData3(
+            int versione, String file, String metodo, int loc, int statementsCount, int cyclomaticComplexity,
+            int nestingDepth, int numberOfBranches, int parameterCount, int returnStatements,
+            int methodInvocations, int distinctMethodInvocations, int localVariableDeclarations, boolean hasJavadoc,
+            int methodHistories, int authors, int stmtAdded, int stmtDeleted, int churn, String buggy) {
+
+        String path = "src/main/resources/metrica.csv";
+        boolean fileExists = new File(path).exists();
+
+        System.out.println(
+                "Versione: " + versione +
+                        " | File: " + file +
+                        " | Metodo: " + metodo +
+                        " | LOC: " + loc +
+                        " | StatementsCount: " + statementsCount +
+                        " | CyclomaticComplexity: " + cyclomaticComplexity +
+                        " | NestingDepth: " + nestingDepth +
+                        " | NumberOfBranches: " + numberOfBranches +
+                        " | ParameterCount: " + parameterCount +
+                        " | ReturnStatements: " + returnStatements +
+                        " | MethodInvocations: " + methodInvocations +
+                        " | DistinctMethodInvocations: " + distinctMethodInvocations +
+                        " | LocalVariableDeclarations: " + localVariableDeclarations +
+                        " | HasJavadoc: " + hasJavadoc +
+                        " | MethodHistories: " + methodHistories +
+                        " | Authors: " + authors +
+                        " | StmtAdded: " + stmtAdded +
+                        " | StmtDeleted: " + stmtDeleted +
+                        " | Churn: " + churn +
+                        " | Buggy: " + buggy
+        );
+
+        try (FileWriter writer = new FileWriter(path, true)) {
+            if (!fileExists) {
+                writer.write("Version,FileName,MethodName,LOC,StatementsCount,CyclomaticComplexity,NestingDepth,NumberOfBranches,ParameterCount,ReturnStatements,MethodInvocations,DistinctMethodInvocations,LocalVariableDeclarations,HasJavadoc,MethodHistories,Authors,StmtAdded,StmtDeleted,Churn,Buggy\n");
+            }
+
+            String versionEscaped = escapeCsv(String.valueOf(versione));
+            String fileEscaped = escapeCsv(file);
+            String metodoEscaped = escapeCsv(metodo);
+            String locEscaped = String.valueOf(loc);
+            String statementsCountEscaped = String.valueOf(statementsCount);
+            String cyclomaticComplexityEscaped = String.valueOf(cyclomaticComplexity);
+            String nestingDepthEscaped = String.valueOf(nestingDepth);
+            String numberOfBranchesEscaped = String.valueOf(numberOfBranches);
+            String parameterCountEscaped = String.valueOf(parameterCount);
+            String returnStatementsEscaped = String.valueOf(returnStatements);
+            String methodInvocationsEscaped = String.valueOf(methodInvocations);
+            String distinctMethodInvocationsEscaped = String.valueOf(distinctMethodInvocations);
+            String localVariableDeclarationsEscaped = String.valueOf(localVariableDeclarations);
+            String hasJavadocEscaped = String.valueOf(hasJavadoc);
+            String methodHistoriesEscaped = String.valueOf(methodHistories);
+            String authorsEscaped = String.valueOf(authors);
+            String stmtAddedEscaped = String.valueOf(stmtAdded);
+            String stmtDeletedEscaped = String.valueOf(stmtDeleted);
+            String churnEscaped = String.valueOf(churn);
+            String buggyEscaped = escapeCsv(buggy);
+
+            writer.write(
+                    versionEscaped + "," +
+                            fileEscaped + "," +
+                            metodoEscaped + "," +
+                            locEscaped + "," +
+                            statementsCountEscaped + "," +
+                            cyclomaticComplexityEscaped + "," +
+                            nestingDepthEscaped + "," +
+                            numberOfBranchesEscaped + "," +
+                            parameterCountEscaped + "," +
+                            returnStatementsEscaped + "," +
+                            methodInvocationsEscaped + "," +
+                            distinctMethodInvocationsEscaped + "," +
+                            localVariableDeclarationsEscaped + "," +
+                            hasJavadocEscaped + "," +
+                            methodHistoriesEscaped + "," +
+                            authorsEscaped + "," +
+                            stmtAddedEscaped + "," +
+                            stmtDeletedEscaped + "," +
+                            churnEscaped + "," +
+                            buggyEscaped + "\n"
+            );
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void writeData(int versione, String file, String metodo, int loc, int locTouched) {
+        String path = "src/main/resources/metrica.csv";
+        boolean fileExists = new File(path).exists();
+
+        System.out.println("versione :"+versione+"file: "+file+ "metodo "+metodo+"loc "+loc+ " loc_touched "+locTouched);
+
+        try (FileWriter writer = new FileWriter(path, true)) {
+            if (!fileExists) {
+                writer.write("Version,FileName,MethodName,LOC,LOC_Touched,NR,NAuth,LOC_Added,Churn\n");
+            }
+
+            String versionEscaped = escapeCsv(String.valueOf(versione));
+            String fileEscaped = escapeCsv(file);
+            String metodoEscaped = escapeCsv(metodo);
+            String locEscaped = String.valueOf(loc);
+            String locTouchedEscaped = String.valueOf(locTouched);
+           // String nrEscaped = String.valueOf(nr);
+           // String nAuthEscaped = String.valueOf(nAuth);
+           // String locAddedEscaped = String.valueOf(locAdded);
+           // String churnEscaped = String.valueOf(churn);
+
+            writer.write(
+                    versionEscaped + "," +
+                            fileEscaped + "," +
+                            metodoEscaped + "," +
+                            locEscaped + "," +
+                            locTouchedEscaped + ","
+                         //   nrEscaped + "," +
+                          //  nAuthEscaped + "," +
+                           // locAddedEscaped + "," +
+                          //  churnEscaped + "\n"
+            );
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // Metodo di escape per i campi CSV
     private String escapeCsv(String field) {

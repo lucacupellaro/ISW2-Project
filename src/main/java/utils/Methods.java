@@ -3,36 +3,30 @@ package utils;
 public class Methods {
 
     private String name;
+    private String filePath;
+    private int startLine;
+    private int endLine;
+
+    // Nuove metriche AST-based
     private int LOC;
-    private int LOC_touched;
-    private int NR;
-    private int NFix;
-    private int NAuth;
-    private int LOC_added;
-    private int MAX_LOC_added;
-    private int AVG_LOC_added;
+    private int statementsCount;
+    private int cyclomaticComplexity;
+    private int nestingDepth;
+    private int numberOfBranches;
+    private int parameterCount;
+    private int returnStatements;
+    private int methodInvocations;
+    private int distinctMethodInvocations;
+    private int localVariableDeclarations;
+    private boolean hasJavadoc;
 
-    // Costruttore completo
-    public Methods(String name, int LOC, int LOC_touched, int NR, int NFix,
-                int NAuth, int LOC_added, int MAX_LOC_added, int AVG_LOC_added) {
-        this.name = name;
-        this.LOC = LOC;
-        this.LOC_touched = LOC_touched;
-        this.NR = NR;
-        this.NFix = NFix;
-        this.NAuth = NAuth;
-        this.LOC_added = LOC_added;
-        this.MAX_LOC_added = MAX_LOC_added;
-        this.AVG_LOC_added = AVG_LOC_added;
-    }
-
-    // Costruttore iniziale
+    // Costruttore base
     public Methods(String name, int LOC) {
         this.name = name;
         this.LOC = LOC;
     }
 
-    // Getter e setter
+    // Getter e Setter per tutti i campi:
 
     public String getName() {
         return name;
@@ -40,6 +34,30 @@ public class Methods {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    public int getStartLine() {
+        return startLine;
+    }
+
+    public void setStartLine(int startLine) {
+        this.startLine = startLine;
+    }
+
+    public int getEndLine() {
+        return endLine;
+    }
+
+    public void setEndLine(int endLine) {
+        this.endLine = endLine;
     }
 
     public int getLOC() {
@@ -50,59 +68,83 @@ public class Methods {
         this.LOC = LOC;
     }
 
-    public int getLOC_touched() {
-        return LOC_touched;
+    public int getStatementsCount() {
+        return statementsCount;
     }
 
-    public void setLOC_touched(int LOC_touched) {
-        this.LOC_touched = LOC_touched;
+    public void setStatementsCount(int statementsCount) {
+        this.statementsCount = statementsCount;
     }
 
-    public int getNR() {
-        return NR;
+    public int getCyclomaticComplexity() {
+        return cyclomaticComplexity;
     }
 
-    public void setNR(int NR) {
-        this.NR = NR;
+    public void setCyclomaticComplexity(int cyclomaticComplexity) {
+        this.cyclomaticComplexity = cyclomaticComplexity;
     }
 
-    public int getNFix() {
-        return NFix;
+    public int getNestingDepth() {
+        return nestingDepth;
     }
 
-    public void setNFix(int NFix) {
-        this.NFix = NFix;
+    public void setNestingDepth(int nestingDepth) {
+        this.nestingDepth = nestingDepth;
     }
 
-    public int getNAuth() {
-        return NAuth;
+    public int getNumberOfBranches() {
+        return numberOfBranches;
     }
 
-    public void setNAuth(int NAuth) {
-        this.NAuth = NAuth;
+    public void setNumberOfBranches(int numberOfBranches) {
+        this.numberOfBranches = numberOfBranches;
     }
 
-    public int getLOC_added() {
-        return LOC_added;
+    public int getParameterCount() {
+        return parameterCount;
     }
 
-    public void setLOC_added(int LOC_added) {
-        this.LOC_added = LOC_added;
+    public void setParameterCount(int parameterCount) {
+        this.parameterCount = parameterCount;
     }
 
-    public int getMAX_LOC_added() {
-        return MAX_LOC_added;
+    public int getReturnStatements() {
+        return returnStatements;
     }
 
-    public void setMAX_LOC_added(int MAX_LOC_added) {
-        this.MAX_LOC_added = MAX_LOC_added;
+    public void setReturnStatements(int returnStatements) {
+        this.returnStatements = returnStatements;
     }
 
-    public int getAVG_LOC_added() {
-        return AVG_LOC_added;
+    public int getMethodInvocations() {
+        return methodInvocations;
     }
 
-    public void setAVG_LOC_added(int AVG_LOC_added) {
-        this.AVG_LOC_added = AVG_LOC_added;
+    public void setMethodInvocations(int methodInvocations) {
+        this.methodInvocations = methodInvocations;
+    }
+
+    public int getDistinctMethodInvocations() {
+        return distinctMethodInvocations;
+    }
+
+    public void setDistinctMethodInvocations(int distinctMethodInvocations) {
+        this.distinctMethodInvocations = distinctMethodInvocations;
+    }
+
+    public int getLocalVariableDeclarations() {
+        return localVariableDeclarations;
+    }
+
+    public void setLocalVariableDeclarations(int localVariableDeclarations) {
+        this.localVariableDeclarations = localVariableDeclarations;
+    }
+
+    public boolean getHasJavadoc() {
+        return hasJavadoc;
+    }
+
+    public void setHasJavadoc(boolean hasJavadoc) {
+        this.hasJavadoc = hasJavadoc;
     }
 }

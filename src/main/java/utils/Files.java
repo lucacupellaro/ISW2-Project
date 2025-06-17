@@ -18,7 +18,8 @@ public class Files {
         this.NFix = NFix;
     }
 
-    public Files(String name) {
+    public Files(String fileName) {
+        this.fileName = fileName;
     }
 
     public String getFileName() {

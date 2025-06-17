@@ -1,6 +1,11 @@
 package org.example;
 import com.github.javaparser.ParseResult;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.LogCommand;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.BufferedReader;
@@ -13,10 +18,19 @@ import com.github.javaparser.ast.stmt.*;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.diff.EditList;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.patch.FileHeader;
+import org.eclipse.jgit.patch.HunkHeader;
+import org.eclipse.jgit.revwalk.filter.CommitTimeRevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.TagOpt;
+import org.eclipse.jgit.util.io.DisabledOutputStream;
 import utils.Files;
 import utils.JiraIssue;
 import utils.Methods;
@@ -98,6 +112,9 @@ public class DownlaodDatas {
                 String fullTagName = tagRef.getName();  // es: refs/tags/release-1.0.0
                 String cleanedTag = fullTagName.replace("refs/tags/", "");
                 //System.out.println("Processing release: " + cleanedTag + " - Date: " + entry.getValue()+ i);
+                git.reset().setMode(ResetCommand.ResetType.HARD).call();
+                git.clean().setCleanDirectories(true).setForce(true).call();
+
 
                 git.checkout().setName(cleanedTag).call();
                 //List<Files> listaFileVersione = getFilesFromVersion(percorsoRepo, cleanedTag);
@@ -116,73 +133,6 @@ public class DownlaodDatas {
 
 
 
-    public void getVersioni(String percorsoRepo, Date dataLimite, List<JiraIssue> issues) {
-        List<Versione> versioni = new ArrayList<>();
-        Set<String> issueKeys = issues.stream()
-                .map(JiraIssue::returnKey)
-                .collect(Collectors.toSet());
-
-        FileRepositoryBuilder builder = new FileRepositoryBuilder();
-
-        try (Repository repository = builder
-                .setGitDir(new File(percorsoRepo, ".git"))
-                .readEnvironment()
-                .findGitDir()
-                .build();
-             Git git = new Git(repository)) {
-
-            RevWalk revWalk = new RevWalk(repository);
-            ObjectId head = repository.resolve("HEAD");
-            RevCommit headCommit = revWalk.parseCommit(head);
-            revWalk.markStart(headCommit);
-
-            // Regex per tutte le chiavi Jira
-            Pattern keyPattern = Pattern.compile(
-                    "\\b(" + String.join("|", issueKeys) + ")\\b"
-            );
-
-            for (RevCommit commit : revWalk) {
-                String commitMessage = commit.getFullMessage();
-                Matcher matcher = keyPattern.matcher(commitMessage);
-                System.out.println("match find: " +matcher.find());
-                // 1. Controllo chiave Jira nel messaggio
-                if (matcher.find()) {
-                    Date commitDate = new Date(commit.getCommitTime() * 1000L);
-                    System.out.println("Ciao");
-                    // 2. Controllo data commit
-                    if (commitDate.after(dataLimite)) {
-                        System.out.println("Commit valido: " + commit.getId().getName()
-                                + " - Data: " + commitDate
-                                + " - Issue: " + matcher.group(1));
-
-                        // 3. Recupero file modificati
-                        List<Files> files = getFilesFromVersion(
-                                percorsoRepo,
-                                commit.getId().getName()
-                        );
-
-                        // 4. Creazione oggetto Versione
-                       /* versioni.add(new Versione(
-                                commit.getId().getName(),
-                                files,
-                                commit.getAuthorIdent().getName(),
-                                commitDate,
-                                matcher.group(1)  // Chiave Jira
-                        ));
-
-                        */
-                    }
-                }
-            }
-            revWalk.dispose();
-        } catch (Exception e) {
-            throw new RuntimeException("Errore nell'analisi del repository", e);
-        }
-       // return versioni;
-    }
-
-
-
 
     public List<Files> getFilesFromVersion(String percorsoRepo, String versionId) throws IOException, GitAPIException {
         List<Files> listaFileVersiones = new ArrayList<>();
@@ -195,6 +145,10 @@ public class DownlaodDatas {
                 .build();
              Git git = new Git(repository)) {
 
+            git.reset().setMode(ResetCommand.ResetType.HARD).call();
+            git.clean().setCleanDirectories(true).setForce(true).call();
+
+
             git.checkout().setName(versionId).call();
 
 
@@ -202,11 +156,11 @@ public class DownlaodDatas {
             for (File fsFile : listAllFiles(rootDir)) {
                 if (fsFile.isFile()) {
 
-                    Files fileVersione = new Files(fsFile.getName());
+                    Files fileVersione = new Files(fsFile.getAbsolutePath());
 
                     if(fsFile.getName().endsWith(".java")) {
                         listaFileVersiones.add(fileVersione);
-                       // System.out.println("File trovato: " + fsFile.getAbsolutePath());
+                        System.out.println("File trovato: " + fsFile.getAbsolutePath());
                        // fileVersione.setMethods(extractMethodsFromFile(fsFile.getAbsolutePath()));
                     }
 
@@ -236,7 +190,10 @@ public class DownlaodDatas {
     }
 
 
-    public List<Methods> extractMethodsFromFile(String filePath) {
+
+    public List<Methods> extractMethodsFromFile2(String filePath) {
+
+       // System.out.println("filepath: " + filePath);
         List<Methods> methodsList = new ArrayList<>();
         try {
             JavaParser parser = new JavaParser();
@@ -249,36 +206,102 @@ public class DownlaodDatas {
 
                 for (MethodDeclaration method : methods) {
                     String methodName = method.getNameAsString();
-                    //int numParams = method.getParameters().size();
 
                     int startLine = method.getBegin().get().line;
                     int endLine = method.getEnd().get().line;
                     int loc = endLine - startLine + 1;
 
-                    //int numIf = method.findAll(IfStmt.class).size();
-                    //int numFor = method.findAll(ForStmt.class).size();
-                    //int numWhile = method.findAll(WhileStmt.class).size();
-                    //int numSwitch = method.findAll(SwitchStmt.class).size();
-                    //int ciclomatica = 1 + numIf + numFor + numWhile + numSwitch;
-
-                    /*
-                     Methods m = new Methods(methodName, loc);
+                    Methods m = new Methods(methodName, loc);
                     m.setLOC(loc);
-                    m.setNumParameters(numParams);
-                    m.setNumIf(numIf);
-                    m.setNumFor(numFor);
-                    m.setNumWhile(numWhile);
-                    m.setCyclomatic(ciclomatica);
-
+                    m.setStartLine(startLine);
+                    m.setEndLine(endLine);
+                    m.setFilePath(filePath); // qui salviamo il path assoluto
                     methodsList.add(m);
-                     */
-                    // DEBUG
-                    //System.out.println("Metodo: " + methodName + " LOC: " + loc );
+                }
+            } else {
+                System.out.println("Parsing fallito su file: " + filePath);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return methodsList;
+    }
+
+    public List<Methods> extractMethodsFromFile3(String filePath) {
+
+        List<Methods> methodsList = new ArrayList<>();
+        try {
+            JavaParser parser = new JavaParser();
+            ParseResult<CompilationUnit> result = parser.parse(new File(filePath));
+
+            if (result.isSuccessful() && result.getResult().isPresent()) {
+                CompilationUnit cu = result.getResult().get();
+
+                List<MethodDeclaration> methods = cu.findAll(MethodDeclaration.class);
+
+                for (MethodDeclaration method : methods) {
+                    String methodName = method.getNameAsString();
+
+                    int startLine = method.getBegin().get().line;
+                    int endLine = method.getEnd().get().line;
+                    int loc = endLine - startLine + 1;
 
                     Methods m = new Methods(methodName, loc);
                     m.setLOC(loc);
-                    methodsList.add(m);
+                    m.setStartLine(startLine);
+                    m.setEndLine(endLine);
+                    m.setFilePath(filePath); // salva path assoluto
 
+                    // Aggiunte nuove metriche:
+                    int parameterCount = method.getParameters().size();
+                    m.setParameterCount(parameterCount);
+
+                    // Statements count
+                    int statementsCount = method.findAll(Statement.class).size();
+                    m.setStatementsCount(statementsCount);
+
+                    // Return statements
+                    int returnStatements = method.findAll(ReturnStmt.class).size();
+                    m.setReturnStatements(returnStatements);
+
+                    // Method invocations
+                    List<MethodCallExpr> calls = method.findAll(MethodCallExpr.class);
+                    int methodInvocations = calls.size();
+                    m.setMethodInvocations(methodInvocations);
+
+                    // Distinct method invocations
+                    Set<String> distinctCalls = calls.stream().map(MethodCallExpr::getNameAsString).collect(Collectors.toSet());
+                    int distinctMethodInvocations = distinctCalls.size();
+                    m.setDistinctMethodInvocations(distinctMethodInvocations);
+
+                    // Local variable declarations
+                    int localVariableDeclarations = method.findAll(VariableDeclarationExpr.class).size();
+                    m.setLocalVariableDeclarations(localVariableDeclarations);
+
+                    // Cyclomatic Complexity (decision points + 1)
+                    int decisions = method.findAll(IfStmt.class).size() +
+                            method.findAll(ForStmt.class).size() +
+                            method.findAll(ForEachStmt.class).size() +
+                            method.findAll(WhileStmt.class).size() +
+                            method.findAll(DoStmt.class).size() +
+                            method.findAll(SwitchEntry.class).size() +
+                            method.findAll(CatchClause.class).size();
+                    int cyclomaticComplexity = decisions + 1;
+                    m.setCyclomaticComplexity(cyclomaticComplexity);
+
+                    // Number of branches (simile ai decision points)
+                    m.setNumberOfBranches(decisions);
+
+                    // Nesting depth
+                    int nestingDepth = computeNestingDepth(method);
+                    m.setNestingDepth(nestingDepth);
+
+                    // Has Javadoc
+                    boolean hasJavadoc = method.getJavadoc().isPresent();
+                    m.setHasJavadoc(hasJavadoc);
+
+                    methodsList.add(m);
                 }
             } else {
                 System.out.println("Parsing fallito su file: " + filePath);
@@ -291,86 +314,31 @@ public class DownlaodDatas {
     }
 
 
+    private int computeNestingDepth(Node node) {
+        return computeNestingDepthRecursive(node, 0);
+    }
 
-
-
-    public List<Methods> getMethodsFromFile(String file) {
-        List<Methods> methods = new ArrayList<>();
-        List<String> lines = new ArrayList<>();
-
-        // Lettura del file
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(String.valueOf(file)))) {
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                lines.add(line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return methods;
-        }
-
-        for (int i = 0; i < lines.size(); i++) {
-            String trimmedLine = lines.get(i).trim();
-
-            if (isMethodDeclaration(trimmedLine)) {
-                int startLine = i + 1; // Linea di inizio (1-based per compatibilità con git blame)
-                int endLine = findMethodEnd(lines, i);
-                int loc = endLine - i; // Calcolo LOC
-
-                // Estrazione firma metodo
-                String signature = extractMethodSignature(trimmedLine);
-                Methods method = new Methods(signature,loc);
-
-                // Impostazione metrica LOC
-                method.setLOC(loc);
-
-                // Aggiungi altre metriche qui...
-
-                methods.add(method);
-
-                System.out.println("Metodo: "+signature+" - LOC: "+loc);
-                // Salta le linee già processate
-                i = endLine - 1; // -1 perché il ciclo incrementa i
+    private int computeNestingDepthRecursive(Node node, int currentDepth) {
+        int maxDepth = currentDepth;
+        for (Node child : node.getChildNodes()) {
+            if (child instanceof IfStmt || child instanceof ForStmt || child instanceof ForEachStmt ||
+                    child instanceof WhileStmt || child instanceof DoStmt || child instanceof SwitchStmt) {
+                int childDepth = computeNestingDepthRecursive(child, currentDepth + 1);
+                maxDepth = Math.max(maxDepth, childDepth);
+            } else {
+                int childDepth = computeNestingDepthRecursive(child, currentDepth);
+                maxDepth = Math.max(maxDepth, childDepth);
             }
         }
-        return methods;
+        return maxDepth;
     }
 
-    // Metodi di supporto
-    public boolean isMethodDeclaration(String line) {
-        return (line.startsWith("public ") || line.startsWith("private ") ||
-                line.startsWith("protected ") || line.startsWith("static "))
-                && line.contains("(") && line.contains(")") && line.contains("{");
-    }
 
-    public int findMethodEnd(List<String> lines, int startIndex) {
-        int braceCount = 1;
-        for (int j = startIndex + 1; j < lines.size(); j++) {
-            braceCount += countBraces(lines.get(j));
-            if (braceCount == 0) return j + 1; // Restituisce linea 1-based
-        }
-        return lines.size(); // Fallback per metodi malformati
-    }
 
-    public int countBraces(String line) {
-        int count = 0;
-        for (char c : line.toCharArray()) {
-            if (c == '{') count++;
-            if (c == '}') count--;
-        }
-        return count;
-    }
 
-    public String extractMethodSignature(String declaration) {
-        int paramStart = declaration.indexOf('(');
-        int paramEnd = declaration.indexOf(')');
-        return declaration.substring(0, paramStart).trim() +
-                declaration.substring(paramStart, paramEnd + 1);
-    }
 
-    public int get_LOC_touched(String percorsoRepo, String versionId, Methods metodo){
-        int i=0;
-        return i;
-    }
+
+
+
 
 }
